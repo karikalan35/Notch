@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+<title>Islet</title>
+<style>
+:root{--acc:#ff7a45;--out:cubic-bezier(.23,1,.32,1);--ease:cubic-bezier(.34,1.3,.64,1);--dur:.5s}
+html,body{margin:0;height:100%;background:transparent;overflow:hidden;user-select:none;-webkit-font-smoothing:antialiased;
+  font-family:"Segoe UI Variable","Segoe UI",system-ui,sans-serif;color:#f4f4f6}
+button{font:inherit;color:inherit}
+#notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:176px;height:34px;overflow:hidden;
+  background:#0b0b0d;border-radius:0 0 17px 17px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+  transition:width var(--dur) var(--ease),height var(--dur) var(--ease),border-radius var(--dur) var(--ease)}
+#notch[data-s="open"]{width:440px;height:190px;border-radius:0 0 28px 28px}
+.layer{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .12s}
+#notch[data-s="rest"] .Lr,#notch[data-s="open"] .Lo{opacity:1;pointer-events:auto}
+#notch[data-s="open"] .Lo{transition:opacity .22s var(--out) calc(var(--dur)*.4)}
+.Lr{display:flex;align-items:center;justify-content:space-between;padding:0 16px}
+.wave{display:flex;gap:2px;align-items:center;height:14px}
+.wave i{width:3px;height:14px;background:var(--acc);border-radius:2px;animation:w .9s ease-in-out infinite alternate}
+.wave i:nth-child(2){animation-delay:.2s}.wave i:nth-child(3){animation-delay:.4s}
+.wave.paused i{animation-play-state:paused;transform:scaleY(.3)}
+@keyframes w{from{transform:scaleY(.25)}to{transform:scaleY(1)}}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc)}
+.Lo{padding:12px 18px 8px;display:flex;flex-direction:column;gap:10px}
+.tabs{display:flex;gap:4px}
+.tabs button{border:0;background:transparent;cursor:pointer;padding:5px 10px;border-radius:999px;font-size:12px;opacity:.6;transition:background .15s,opacity .15s,transform .12s var(--out)}
+.tabs button[aria-selected="true"]{background:rgba(127,127,127,.3);opacity:1}
+.tabs button:active,.cb button:active,.items button:active{transform:scale(.96)}
+.pane{flex:1;min-height:0}.pane[hidden]{display:none}
+.pane:not([hidden]){animation:pin .22s var(--out)}
+@keyframes pin{from{opacity:0;transform:translateY(6px)}}
+.music{display:grid;grid-template-columns:78px 1fr;gap:14px;align-items:center}
+.art{width:78px;height:78px;border-radius:14px;background:conic-gradient(from 200deg,var(--acc),#6a2cff,#18c3b2,var(--acc));box-shadow:0 8px 24px rgba(255,122,69,.4)}
+.info b{display:block;font-size:14px;font-weight:600}.info span{font-size:12px;opacity:.7}
+.cb{display:flex;gap:10px;align-items:center;margin:6px 0}
+.cb button{background:transparent;border:0;cursor:pointer;padding:4px;display:grid;place-items:center;transition:transform .12s var(--out)}
+.cb .play{background:var(--acc);color:#111;width:30px;height:30px;border-radius:50%}
+.prog{display:flex;align-items:center;gap:8px;font-size:11px;font-variant-numeric:tabular-nums;opacity:.85}
+.bar{flex:1;height:4px;border-radius:2px;background:rgba(127,127,127,.35);overflow:hidden}.bar b{display:block;height:100%;background:var(--acc)}
+.items{display:grid;gap:6px;align-content:start}
+.items button{text-align:left;border:0;cursor:pointer;background:rgba(127,127,127,.2);padding:7px 12px;border-radius:10px;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:transform .12s var(--out)}
+.items p{margin:6px 0;font-size:12.5px;opacity:.6}
+.wid{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px}
+.wid div{background:rgba(127,127,127,.2);border-radius:12px;padding:10px 12px;font-size:12px;display:flex;flex-direction:column;justify-content:center}
+.wid strong{font-size:24px;font-weight:600;line-height:1.1}
+#status{font-size:11px;opacity:.6;min-height:14px}
+
+.row1{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.wb{display:flex;gap:4px;flex:none}
+.wb button{width:26px;height:26px;border-radius:50%;border:0;background:rgba(127,127,127,.22);cursor:pointer;display:grid;place-items:center;transition:background .15s,transform .12s var(--out)}
+.wb button:hover{background:rgba(127,127,127,.4)}.wb #quit:hover{background:#c0392b}.wb button:active{transform:scale(.92)}
+.drop{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1.5px dashed rgba(127,127,127,.55);border-radius:12px;padding:10px 12px;font-size:12.5px}
+.drop button,.tg button{border:0;cursor:pointer;color:#111;font-size:12px;background:var(--acc);border-radius:8px;padding:5px 10px;transition:transform .12s var(--out)}
+.drop button:active,.tg button:active{transform:scale(.96)}
+.files{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.files span{background:rgba(127,127,127,.22);border-radius:8px;padding:4px 4px 4px 8px;font-size:11.5px;display:flex;gap:4px;align-items:center;max-width:48%}
+.files em{font-style:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.files button{border:0;background:none;cursor:pointer;opacity:.7;padding:2px 5px}
+.ctrls{display:grid;gap:8px;align-content:start}
+.ctrls label{display:grid;grid-template-columns:20px 1fr 30px;gap:10px;align-items:center;font-size:12px}
+.ctrls output{text-align:right;opacity:.75;font-variant-numeric:tabular-nums}
+.tg button[aria-pressed="true"]{background:#c0392b;color:#fff}
+.ctrls.off label{opacity:.4}
+input[type=range]{--p:50%;-webkit-appearance:none;appearance:none;width:100%;height:20px;background:transparent;cursor:pointer;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--acc) var(--p),rgba(127,127,127,.35) var(--p))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;margin-top:-6px;border-radius:50%;background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.45)}
+input[type=range]:disabled{cursor:default;opacity:.5}
+@media (prefers-reduced-motion:reduce){:root{--dur:.01s}.wave i{animation:none}.pane:not([hidden]){animation:none}}
+</style>
+</head>
+<body>
+<div id="notch" data-s="rest">
+  <div class="layer Lr"><div class="wave" id="w1"><i></i><i></i><i></i></div><div class="dot"></div></div>
+  <div class="layer Lo">
+    <div class="row1">
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="music" aria-selected="true">Music</button>
+        <button role="tab" data-tab="clip" aria-selected="false">Clipboard</button>
+        <button role="tab" data-tab="wid" aria-selected="false">Widgets</button>
+        <button role="tab" data-tab="files" aria-selected="false">Files</button>
+        <button role="tab" data-tab="ctrl" aria-selected="false">Controls</button>
+      </div>
+      <div class="wb">
+        <button id="hide" aria-label="Hide the notch" title="Hide (Ctrl+Alt+N brings it back)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+        <button id="quit" aria-label="Quit Islet" title="Quit Islet"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+    </div>
+    <div class="pane" data-pane="music">
+      <div class="music"><div class="art"></div>
+        <div class="info"><b>Harbor Lights</b><span>Demo player</span>
+          <div class="cb">
+            <button id="prev" aria-label="Previous"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+            <button id="play" class="play" aria-label="Pause"><svg id="pi" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"></svg></button>
+            <button id="next" aria-label="Next"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+          </div>
+          <div class="prog"><span id="tn">0:41</span><div class="bar"><b id="pb" style="width:20%"></b></div><span>3:18</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="pane items" data-pane="clip" hidden id="clips"></div>
+    <div class="pane wid" data-pane="wid" hidden>
+      <div><strong id="clk">12:00</strong><span id="dt">Today</span></div>
+      <div><strong id="bat">--</strong><span id="bst">Battery</span></div>
+      <div><strong id="up">0m</strong><span>Islet running</span></div>
+    </div>
+    <div class="pane" data-pane="files" hidden>
+      <div class="drop"><span id="ftxt">No files on the shelf</span><button id="pick">Add files</button></div>
+      <div class="files" id="fl"></div>
+    </div>
+    <div class="pane ctrls" data-pane="ctrl" hidden>
+      <label><svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 9a4 4 0 010 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><input id="vs" type="range" min="0" max="100" value="50" aria-label="Volume"><output id="vo">50</output></label>
+      <label id="brow"><svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><input id="bs" type="range" min="5" max="100" value="80" aria-label="Brightness"><output id="bo">80</output></label>
+      <div class="tg"><button id="mc" aria-pressed="false">Mic on</button></div>
+    </div>
+    <div id="status" aria-live="polite"></div>
+  </div>
+</div>
+<script src="renderer.js"></script>
+</body>
+</html>
