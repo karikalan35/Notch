@@ -59,9 +59,11 @@ window.islet.onOnTop(v => { onTop = v; paintPin(); });
 paintPin();
 
 /* ================= tabs ================= */
+let tabswT;
 function setTab(k) {
   $$('.tabs button').forEach(x => x.setAttribute('aria-selected', x.dataset.tab === k));
   $$('.pane').forEach(p => p.hidden = p.dataset.pane !== k);
+  n.classList.add('tabsw'); clearTimeout(tabswT); tabswT = setTimeout(() => n.classList.remove('tabsw'), 380);
   n.dataset.t = k;
   fitNotch();
   if (k === 'apps') loadApps();
@@ -82,8 +84,8 @@ function fitNotch() {
     if (cs.position === 'absolute' || cs.display === 'none') return;                     // overlays (Wi-Fi list) do not count
     bottom = Math.max(bottom, c.offsetTop + c.offsetHeight);
   });
-  const need = pane.offsetTop + bottom + 10;                                              // 10 = the bottom padding of the notch
-  n.style.setProperty('--oh', Math.round(Math.min(Math.max(need, 150), tab === 'files' ? 200 : 230)) + 'px');
+  const need = pane.offsetTop + bottom + (tab === 'ctrl' ? 18 : 10);                      // room under the content (Controls gets more, its tiles sit near the rounded corners)
+  n.style.setProperty('--oh', Math.round(Math.min(Math.max(need, 150), tab === 'files' ? 214 : 230)) + 'px');
 }
 let fitRaf = 0;
 new MutationObserver(() => { cancelAnimationFrame(fitRaf); fitRaf = requestAnimationFrame(fitNotch); })
@@ -301,11 +303,16 @@ window.islet.getClips().then(renderClips); window.islet.onClips(renderClips);
 /* ================= files: drop in, drag out ================= */
 let shelf = [];
 const hasFiles = e => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+const fileIcons = new Map();
+function fileIcon(p, img) {
+  if (fileIcons.has(p)) { const u = fileIcons.get(p); if (u) img.src = u; else img.style.visibility = 'hidden'; return; }
+  window.islet.icon(p).then(u => { fileIcons.set(p, u || ''); if (u) img.src = u; else img.style.visibility = 'hidden'; });
+}
 function renderShelf() {
   const l = $('#fl'); l.innerHTML = '';
   shelf.forEach(f => {
     const it = document.createElement('div'); it.className = 'fitem'; it.draggable = true; it.title = f.path;
-    const img = document.createElement('img'); img.alt = ''; window.islet.icon(f.path).then(u => { if (u) img.src = u; else img.style.visibility = 'hidden'; });
+    const img = document.createElement('img'); img.alt = ''; fileIcon(f.path, img);
     const em = document.createElement('em'); em.textContent = f.name; em.onclick = () => window.islet.openFile(f.path);
     const x = document.createElement('button'); x.textContent = '\u00d7'; x.setAttribute('aria-label', 'Remove from the shelf'); x.onclick = () => { shelf = shelf.filter(y => y !== f); renderShelf(); };
     // dragging out: hand the real file to Windows so it can be dropped on the desktop, a folder or another app
@@ -548,13 +555,12 @@ const clockOf = ms => {
 async function showAlert(note) {
   alertCur = note; prevS = { s: n.dataset.s === 'toast' ? 'rest' : n.dataset.s, t: n.dataset.t };
   const len = note.text.length;
-  $('#amsg').className = 'amsg' + (len > 90 ? ' l' : len > 40 ? ' m' : '');
-  $('#amsg').firstElementChild.textContent = note.text;
+  $('#amsg').firstElementChild.textContent = note.text; $('#amsg').title = note.text;
   $('#atime').textContent = clockOf(note.at);
   clearTimeout(shrinkT); clearTimeout(closeT); clearTimeout(noteT);
-  if (!winBig) { winBig = true; await window.islet.size(true); }
+  if (prevS.s !== 'open') { await window.islet.size('alert'); winBig = false; }          // small like the battery toast; if the notch is already open the window is already big
   n.dataset.s = 'alert';
-  alertTotal = alertLeft = Math.min(30000, Math.max(9000, 6000 + len * 90));       // long enough to read, longer for a longer message
+  alertTotal = alertLeft = Math.min(30000, Math.max(9000, 6000 + len * 120));       // long enough to read, longer for a longer message
   alertPaused = inside;
   $('#abarf').style.width = '100%';
   clearInterval(alertIv);
@@ -569,7 +575,7 @@ function endAlert(snooze) {
   clearInterval(alertIv);
   const note = alertCur; alertCur = null;
   if (snooze) window.islet.remAdd({ text: note.text, at: Date.now() + 5 * 60000 });
-  if (prevS.s === 'open') n.dataset.s = 'open';                // it was open: stay open (it closes by itself if the cursor is away)
+  if (prevS.s === 'open') { winBig = true; n.dataset.s = 'open'; }                // it was open: stay open (it closes by itself if the cursor is away)
   else closeNotch();                                           // it was closed: shrink back smoothly
   if (note.wasHidden && !noteQ.some(x => x.kind === 'reminder')) setTimeout(() => window.islet.hide(), 800);
   noteBusy = false; setTimeout(runNotes, 800);

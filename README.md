@@ -26,8 +26,8 @@ Time on the left, battery on the right. A small wave shows while media plays. Or
 - Several notifications wait in line, so they never overlap. A battery pill waits while the notch is open.
 - To see them without waiting: tray icon, right-click, Test notifications.
 
-## Shape
-The top corners of the notch curve outward into the screen edge, like the MacBook notch.
+## Size
+The whole notch is drawn a little smaller than the original design (Medium). Tray icon, right-click, Size lets you pick Small, Medium or Normal.
 
 ## Notes
 - The window is only as big as the notch while it is closed (so files can be dropped on it) and grows while open.

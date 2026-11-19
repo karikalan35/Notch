@@ -12,9 +12,14 @@ if (!app.requestSingleInstanceLock()) app.quit();
 
 // The window is only as big as the notch while it is closed (so files can be dropped on it),
 // and grows while it is open.
-const SIZE = { rest: { w: 224, h: 40 }, toast: { w: 310, h: 60 }, open: { w: 480, h: 220 } };
+// The window never changes size or position any more (resizing a transparent window flashed old pixels for a moment).
+// Instead it is always the open size, and while the notch is closed or showing a toast it ignores the mouse everywhere
+// except on the pill itself, so the empty area around the notch does not block the apps behind it.
+const SIZE = { open: { w: 480, h: 220 } };
+const PILL = { rest: { w: 200, h: 34 }, toast: { w: 270, h: 44 }, alert: { w: 300, h: 46 } };
 let win, tray, mode = 'rest';             // window size: rest | toast | open
 let reminders;
+let scale = 0.9;                     // size of the whole notch (1 = the original size); change it from the tray menu, Size
 let onTop = true;                    // the pin: keep the notch above every other window
 let last = '';
 let clips, appStore;
@@ -30,8 +35,23 @@ let sysPs = null, mediaPs = null, netPs = null;
 const send = (ch, data) => { if (win && !win.isDestroyed()) win.webContents.send(ch, data); };
 
 /* ---------- window ---------- */
+let ignoring = null;
+function updateIgnore(p) {
+  if (!win || win.isDestroyed()) return;
+  let want = false;                                         // open / reminder screen: the whole window takes the mouse
+  const pill = PILL[mode];
+  if (pill) {
+    const b = win.getBounds(), cx = b.x + b.width / 2, c = p || screen.getCursorScreenPoint();
+    const pw = pill.w * scale, ph = pill.h * scale;
+    const over = c.x >= cx - pw / 2 - 14 && c.x <= cx + pw / 2 + 14 && c.y >= b.y && c.y <= b.y + ph + 8;
+    want = !over;                                           // closed: click-through, except right on the pill (so files can still be dropped on it)
+  }
+  if (want === ignoring) return;
+  ignoring = want;
+  try { win.setIgnoreMouseEvents(want, { forward: true }); } catch (e) {}
+}
 function place() {
-  const d = screen.getPrimaryDisplay(), s = SIZE[mode] || SIZE.rest;
+  const d = screen.getPrimaryDisplay(), s = SIZE.open;
   win.setBounds({ x: Math.round(d.bounds.x + (d.bounds.width - s.w) / 2), y: d.bounds.y, width: s.w, height: s.h });
 }
 function keepOnTop() {
@@ -47,6 +67,11 @@ function buildTrayMenu() {
     { label: 'Always on top', type: 'checkbox', checked: onTop, click: i => applyOnTop(i.checked, true) },
     { label: 'Start with Windows', type: 'checkbox', checked: app.getLoginItemSettings().openAtLogin,
       click: i => app.setLoginItemSettings({ openAtLogin: i.checked }) },
+    { label: 'Size', submenu: [
+      { label: 'Small', type: 'radio', checked: scale === 0.8, click: () => applyScale(0.8) },
+      { label: 'Medium', type: 'radio', checked: scale === 0.9, click: () => applyScale(0.9) },
+      { label: 'Normal', type: 'radio', checked: scale === 1, click: () => applyScale(1) }
+    ] },
     { label: 'Test notifications', submenu: [
       { label: 'Charger connected', click: () => send('note-test', 'charging') },
       { label: 'Battery full', click: () => send('note-test', 'full') },
@@ -56,18 +81,24 @@ function buildTrayMenu() {
     { label: 'Quit Islet', click: () => app.quit() }
   ]));
 }
+function applyScale(s) {
+  scale = s;
+  if (win && !win.isDestroyed()) win.webContents.setZoomFactor(scale);
+  try { fs.writeFileSync(path.join(app.getPath('userData'), 'settings.json'), JSON.stringify({ onTop, scale })); } catch (e) {}
+  ignoring = null; updateIgnore(); buildTrayMenu();
+}
 function applyOnTop(on, fromTray) {
   onTop = !!on;
   if (win && !win.isDestroyed()) {
     if (onTop) { win.setAlwaysOnTop(true, 'screen-saver'); win.moveTop(); } else win.setAlwaysOnTop(false);
   }
-  try { fs.writeFileSync(path.join(app.getPath('userData'), 'settings.json'), JSON.stringify({ onTop })); } catch (e) {}
+  try { fs.writeFileSync(path.join(app.getPath('userData'), 'settings.json'), JSON.stringify({ onTop, scale })); } catch (e) {}
   if (fromTray) send('ontop', onTop);
   buildTrayMenu();
 }
 function createWindow() {
   win = new BrowserWindow({
-    width: SIZE.rest.w, height: SIZE.rest.h,
+    width: SIZE.open.w, height: SIZE.open.h,
     frame: false, transparent: true, resizable: false, movable: false,
     hasShadow: false, skipTaskbar: true, alwaysOnTop: onTop,
     focusable: false, show: false,
@@ -76,6 +107,7 @@ function createWindow() {
   win.setAlwaysOnTop(onTop, 'screen-saver');
   place();
   win.loadFile('index.html');
+  win.webContents.on('did-finish-load', () => win.webContents.setZoomFactor(scale));
   win.once('ready-to-show', () => win.showInactive());
   screen.on('display-metrics-changed', place);
   setInterval(keepOnTop, 1500);
@@ -84,7 +116,8 @@ function createWindow() {
   setInterval(() => {
     if (!win || win.isDestroyed() || !win.isVisible()) return;
     const p = screen.getCursorScreenPoint(), b = win.getBounds();
-    send('cursor', { x: p.x - b.x, y: p.y - b.y });
+    send('cursor', { x: (p.x - b.x) / scale, y: (p.y - b.y) / scale });      // in the page's own (zoomed) units
+    updateIgnore(p);
   }, 80);       // stay above full-screen windows, the taskbar and the Start menu (only while the pin is on)
 }
 
@@ -159,7 +192,7 @@ async function iconFor(p) {
 /* ---------- app start ---------- */
 app.whenReady().then(() => {
   const dataDir = app.getPath('userData');
-  try { const s = JSON.parse(fs.readFileSync(path.join(dataDir, 'settings.json'), 'utf8')); if (typeof s.onTop === 'boolean') onTop = s.onTop; } catch (e) {}
+  try { const s = JSON.parse(fs.readFileSync(path.join(dataDir, 'settings.json'), 'utf8')); if (typeof s.onTop === 'boolean') onTop = s.onTop; if (typeof s.scale === 'number' && s.scale >= 0.7 && s.scale <= 1.2) scale = s.scale; } catch (e) {}
   clips = new ClipStore(path.join(dataDir, 'pinned-clips.json'));
   appStore = new Apps.AppStore(path.join(dataDir, 'apps.json'));
   reminders = new Reminders(path.join(dataDir, 'reminders.json'));
@@ -209,7 +242,7 @@ app.whenReady().then(() => {
 });
 
 /* ---------- window ---------- */
-ipcMain.handle('size', (_, m) => { mode = m === true ? 'open' : m === 'toast' ? 'toast' : 'rest'; place(); return true; });
+ipcMain.handle('size', (_, m) => { mode = m === true ? 'open' : (m === 'toast' || m === 'alert') ? m : 'rest'; updateIgnore(); return true; });
 ipcMain.handle('focusable', (_, on) => { win.setFocusable(!!on); if (on) win.focus(); return true; });
 ipcMain.on('hide', () => win.hide());
 ipcMain.handle('ontop-get', () => onTop);
