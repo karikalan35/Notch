@@ -1,12 +1,13 @@
 # Islet media helper. Prints one JSON line per second describing what Windows says is playing
 # (Spotify, YouTube in a browser, video players: anything that shows in the Windows media overlay).
-# Commands on stdin: toggle | next | prev | seek <seconds>
+# Commands on stdin: toggle | next | prev | shuffle | repeat | seek <seconds> | select <app id>
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
 [void][Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType = WindowsRuntime]
 [void][Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties, Windows.Media.Control, ContentType = WindowsRuntime]
+[void][Windows.Media.MediaPlaybackAutoRepeatMode, Windows.Media, ContentType = WindowsRuntime]
 
 # media keys, used when an app refuses the normal play/pause/next/previous request
 Add-Type -Namespace Islet -Name Keys -MemberDefinition '[DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);'
@@ -151,6 +152,8 @@ function Poll {
   if ($dur -gt 0) { $pos = [math]::Min($pos, $dur) }
   $pos = [math]::Max(0, $pos)
   $key = [string]$s.SourceAppUserModelId + '|' + [string]$p.Title + '|' + [string]$p.Artist
+  $shuf = $null; if ($null -ne $info.IsShuffleActive) { $shuf = [bool]$info.IsShuffleActive }
+  $rep = ''; if ($null -ne $info.AutoRepeatMode) { $rep = [string]$info.AutoRepeatMode }      # None | Track | List
   $o = [ordered]@{
     none = $false
     key = $key
@@ -162,6 +165,10 @@ function Poll {
     pos = [math]::Round($pos, 1)
     dur = [math]::Round($dur, 1)
     canSeek = [bool]$info.Controls.IsPlaybackPositionEnabled
+    shuffle = $shuf
+    canShuffle = [bool]$info.Controls.IsShuffleEnabled
+    repeat = $rep
+    canRepeat = [bool]$info.Controls.IsRepeatEnabled
   }
   $sess = @(Get-Sessions)
   if ($sess.Count -ge 2) { $o['sessions'] = $sess }
@@ -210,6 +217,16 @@ function Handle($line) {
     }
     'next' { $ok = Await ($s.TrySkipNextAsync()) ([bool]); if (-not $ok) { Press-Key 0xB0 } }
     'prev' { $ok = Await ($s.TrySkipPreviousAsync()) ([bool]); if (-not $ok) { Press-Key 0xB1 } }
+    'shuffle' {
+      $cur = $false; if ($null -ne $s.GetPlaybackInfo().IsShuffleActive) { $cur = [bool]$s.GetPlaybackInfo().IsShuffleActive }
+      [void](Await ($s.TryChangeShuffleActiveAsync(-not $cur)) ([bool]))
+    }
+    'repeat' {                          # off -> repeat all -> repeat one -> off
+      $m = [string]$s.GetPlaybackInfo().AutoRepeatMode
+      $next = switch ($m) { 'None' { 'List' } 'List' { 'Track' } default { 'None' } }
+      $mode = [Enum]::Parse([Windows.Media.MediaPlaybackAutoRepeatMode], $next)
+      [void](Await ($s.TryChangeAutoRepeatModeAsync($mode)) ([bool]))
+    }
     'seek' {
       $sec = [double]$parts[1]
       $start = $s.GetTimelineProperties().StartTime.TotalSeconds

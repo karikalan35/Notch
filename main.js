@@ -12,7 +12,7 @@ if (!app.requestSingleInstanceLock()) app.quit();
 
 // The window is only as big as the notch while it is closed (so files can be dropped on it),
 // and grows while it is open.
-const SIZE = { rest: { w: 224, h: 40 }, toast: { w: 310, h: 60 }, open: { w: 480, h: 280 } };
+const SIZE = { rest: { w: 224, h: 40 }, toast: { w: 310, h: 60 }, open: { w: 480, h: 220 } };
 let win, tray, mode = 'rest';             // window size: rest | toast | open
 let reminders;
 let onTop = true;                    // the pin: keep the notch above every other window
@@ -227,7 +227,7 @@ ipcMain.on('clip-clear', () => { clips.clear(); send('clips', clips.list()); });
 /* ---------- media, system controls, network ---------- */
 ipcMain.handle('media-state', () => media);
 ipcMain.on('media', (_, cmd, val) => {
-  if (['toggle', 'next', 'prev'].includes(cmd)) write(mediaPs, cmd);
+  if (['toggle', 'next', 'prev', 'shuffle', 'repeat'].includes(cmd)) write(mediaPs, cmd);
   else if (cmd === 'seek' && Number.isFinite(val)) write(mediaPs, 'seek ' + Math.max(0, Math.round(val)));
   else if (cmd === 'select' && typeof val === 'string' && val) write(mediaPs, 'select ' + val.replace(/[\r\n]/g, '').slice(0, 300));
 });

@@ -63,10 +63,31 @@ function setTab(k) {
   $$('.tabs button').forEach(x => x.setAttribute('aria-selected', x.dataset.tab === k));
   $$('.pane').forEach(p => p.hidden = p.dataset.pane !== k);
   n.dataset.t = k;
+  fitNotch();
   if (k === 'apps') loadApps();
   if (k === 'wid') widgets();
 }
 $$('.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+
+/* Controls and Files get exactly the height of their content (no empty strip at the bottom).
+   Every other tab keeps the Media height, and scrolls when it has more than fits. */
+function fitNotch() {
+  const tab = n.dataset.t;
+  if (tab !== 'ctrl' && tab !== 'files') { n.style.removeProperty('--oh'); return; }
+  const pane = document.querySelector('.pane[data-pane="' + tab + '"]');
+  if (!pane || pane.hidden) return;
+  let bottom = 0;
+  [...pane.children].forEach(c => {
+    const cs = getComputedStyle(c);
+    if (cs.position === 'absolute' || cs.display === 'none') return;                     // overlays (Wi-Fi list) do not count
+    bottom = Math.max(bottom, c.offsetTop + c.offsetHeight);
+  });
+  const need = pane.offsetTop + bottom + 10;                                              // 10 = the bottom padding of the notch
+  n.style.setProperty('--oh', Math.round(Math.min(Math.max(need, 150), tab === 'files' ? 200 : 230)) + 'px');
+}
+let fitRaf = 0;
+new MutationObserver(() => { cancelAnimationFrame(fitRaf); fitRaf = requestAnimationFrame(fitNotch); })
+  .observe(document.querySelector('.Lo'), { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'class', 'style'], characterData: true });
 
 /* ================= closed notch: time, battery, privacy dots ================= */
 function clockTick() {
@@ -144,6 +165,12 @@ function paintMedia() {
   $('#mt').textContent = has ? (media.title || 'Unknown title') : 'Nothing playing';
   $('#ma').textContent = has ? (media.artist || (playing ? 'Playing' : 'Paused')) : 'Play something on your PC';
   ['#prev', '#play', '#next'].forEach(id => $(id).disabled = !has);
+  const sh = has && media.shuffle === true, rp = has ? (media.repeat || 'None') : 'None';
+  $('#shuf').disabled = !has || !media.canShuffle; $('#shuf').classList.toggle('on', sh); $('#shuf').setAttribute('aria-pressed', sh);
+  $('#rep').disabled = !has || !media.canRepeat; $('#rep').classList.toggle('on', rp !== 'None'); $('#rep').setAttribute('aria-pressed', rp !== 'None');
+  $('#rep1').style.display = rp === 'Track' ? '' : 'none';
+  $('#shuf').title = sh ? 'Shuffle: on' : 'Shuffle: off';
+  $('#rep').title = rp === 'Track' ? 'Repeat: this song' : rp === 'List' ? 'Repeat: all' : 'Repeat: off';
   $('#pi').innerHTML = playing ? ic.pause : ic.play;
   $('#play').setAttribute('aria-label', playing ? 'Pause' : 'Play');
   $('#art').classList.toggle('idle', !playing);
@@ -200,8 +227,10 @@ function setMedia(m) {
   const guarded = guardUntil > Date.now(), playing = guarded ? base.playing : media.playing;
   if (media.key !== prevKey || Math.abs(media.pos - localPos()) > 3 || (!guarded && base.playing !== media.playing)) rebase(media.pos, playing);
   else base.playing = playing;
+  if (modeGuard > Date.now()) { media.shuffle = modeOv.shuffle; media.repeat = modeOv.repeat; }     // right after a click keep what was clicked
   paintMedia(); setIcon(media.exe || ''); paintSessions();
 }
+let modeGuard = 0, modeOv = { shuffle: false, repeat: 'None' };
 window.islet.getMedia().then(setMedia); window.islet.onMedia(setMedia);
 setInterval(tickProgress, 250);                       // keeps the bar moving between updates
 const guard = () => { guardUntil = Date.now() + 1500; };   // right after a click, ignore an old status from the player
@@ -210,6 +239,17 @@ $('#play').onclick = () => {                           // the button reacts at o
   if (!media) return;
   rebase(localPos(), !base.playing); guard(); paintMedia();
   window.islet.media('toggle');
+};
+$('#shuf').onclick = () => {
+  if (!media || !media.canShuffle) return;
+  media.shuffle = !(media.shuffle === true); modeOv = { shuffle: media.shuffle, repeat: media.repeat || 'None' }; modeGuard = Date.now() + 1800;
+  paintMedia(); window.islet.media('shuffle');
+};
+$('#rep').onclick = () => {
+  if (!media || !media.canRepeat) return;
+  media.repeat = { None: 'List', List: 'Track', Track: 'None' }[media.repeat || 'None'] || 'List';
+  modeOv = { shuffle: media.shuffle === true, repeat: media.repeat }; modeGuard = Date.now() + 1800;
+  paintMedia(); window.islet.media('repeat');
 };
 $('#prev').onclick = () => window.islet.media('prev');
 $('#next').onclick = () => window.islet.media('next');
@@ -272,8 +312,10 @@ function renderShelf() {
     it.addEventListener('dragstart', e => { e.preventDefault(); holdUntil = Date.now() + 10000; window.islet.dragOut(f.path); });
     it.append(img, em, x); l.appendChild(it);
   });
-  $('#ftxt').textContent = shelf.length ? shelf.length + (shelf.length > 1 ? ' files' : ' file') + ' on the shelf' : 'Drop files here';
-  $('#fhint').style.visibility = shelf.length ? 'visible' : 'hidden';
+  if (shelf.length) $('#ftxt').textContent = shelf.length + (shelf.length > 1 ? ' files' : ' file') + ' on the shelf';
+  else $('#ftxt').innerHTML = 'Drag &amp; drop <span class="dim">files</span>';
+  $('#drop').classList.toggle('compact', shelf.length > 0);
+  $('#fhint').style.display = shelf.length ? '' : 'none';
 }
 function addToShelf(list) { (list || []).forEach(f => { if (!shelf.some(y => y.path === f.path)) shelf.push(f); }); renderShelf(); }
 $('#pick').onclick = async () => addToShelf(await window.islet.pickFiles());
@@ -501,7 +543,7 @@ async function showToast(note) {
 
 const clockOf = ms => {
   const d = new Date(ms), t = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  return d.toDateString() === new Date().toDateString() ? t : d.toLocaleDateString([], { weekday: 'short' }) + ' ' + t;
+  return d.toDateString() === new Date().toDateString() ? t : d.toLocaleDateString([], { day: 'numeric', month: 'short' }) + ', ' + t;
 };
 async function showAlert(note) {
   alertCur = note; prevS = { s: n.dataset.s === 'toast' ? 'rest' : n.dataset.s, t: n.dataset.t };
@@ -540,13 +582,38 @@ window.islet.onNoteTest(k => {
   else pushNote({ kind: k, pct: k === 'full' ? 100 : 63 });
 });
 
-/* ================= reminders: the bell button ================= */
-let remChip = 0;
+/* ================= reminders: the bell button and the calendar ================= */
+let remChip = 0, remItems = [], remDate = new Date(), calY = 0, calM = 0;
 const pad2 = v => String(v).padStart(2, '0');
 const hhmm = ms => { const d = new Date(ms); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); };
+const dayStart = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+function renderCal() {
+  const today = dayStart(new Date()), first = new Date(calY, calM, 1);
+  $('#cmonth').textContent = first.toLocaleDateString([], { month: 'long', year: 'numeric' });
+  $('#cprev').disabled = calY === today.getFullYear() && calM <= today.getMonth();      // nothing can be set in the past
+  const g = $('#cgrid'); g.innerHTML = '';
+  const lead = (first.getDay() + 6) % 7, days = new Date(calY, calM + 1, 0).getDate();
+  for (let i = 0; i < lead; i++) g.appendChild(document.createElement('i'));
+  for (let d = 1; d <= days; d++) {
+    const day = new Date(calY, calM, d), b = document.createElement('button');
+    b.className = 'cd'; b.textContent = d; b.disabled = day < today;
+    if (sameDay(day, today)) b.classList.add('today');
+    if (sameDay(day, remDate)) b.classList.add('sel');
+    if (remItems.some(x => sameDay(new Date(x.at), day))) b.classList.add('has');        // a dot marks days that already have a reminder
+    b.onclick = () => { remDate = day; remChip = 0; paintDate(); renderCal(); };
+    g.appendChild(b);
+  }
+}
+function paintDate() {
+  const d = remDate, t = sameDay(d, new Date()) ? 'Today, ' : '';
+  $('#rdate').textContent = t + d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+}
 function renderRem(list) {
+  remItems = list;
   const box = $('#rlist'); box.innerHTML = '';
-  if (!list.length) { box.innerHTML = '<p>No reminders yet.</p>'; return; }
+  if (!list.length) { box.innerHTML = '<p>No reminders yet.</p>'; renderCal(); return; }
   list.forEach(x => {
     const row = document.createElement('div'); row.className = 'rrow';
     const tm = document.createElement('time'); tm.textContent = clockOf(x.at);
@@ -555,10 +622,14 @@ function renderRem(list) {
     del.onclick = async () => renderRem(await window.islet.remDel(x.id));
     row.append(tm, tx, del); box.appendChild(row);
   });
+  renderCal();
 }
 async function openRemind() {
-  $('#remind').hidden = false; n.dataset.r = '1';
-  remChip = 0; $('#rtime').value = hhmm(Date.now() + 10 * 60000); $('#rmsg').textContent = '';
+  const t = Date.now() + 10 * 60000;
+  remChip = 0; remDate = dayStart(t); calY = remDate.getFullYear(); calM = remDate.getMonth();
+  $('#rtime').value = hhmm(t); $('#rmsg').textContent = ''; $('#rtext').value = '';
+  paintDate(); renderCal();
+  $('#remind').hidden = false; $('#remind').scrollTop = 0; n.dataset.r = '1';
   await window.islet.focusable(true); $('#rtext').focus();
   renderRem(await window.islet.remList());
 }
@@ -568,12 +639,10 @@ async function addRemind() {
   if (!text) { $('#rmsg').textContent = 'Type what to remind you about.'; $('#rtext').focus(); return; }
   const v = $('#rtime').value;
   if (!/^\d\d:\d\d$/.test(v)) { $('#rmsg').textContent = 'Pick a time.'; return; }
-  let at;
-  if (remChip && hhmm(remChip) === v) at = remChip;                          // a quick button keeps its exact moment
-  else {
-    const d = new Date(); d.setHours(+v.slice(0, 2), +v.slice(3), 0, 0); at = d.getTime();
-    if (at <= Date.now()) at += 86400000;                                      // that time has passed today: tomorrow
-  }
+  const d = new Date(remDate); d.setHours(+v.slice(0, 2), +v.slice(3), 0, 0);
+  let at = d.getTime();
+  if (remChip && hhmm(remChip) === v && sameDay(new Date(remChip), remDate)) at = remChip;   // a quick button keeps its exact moment
+  if (at <= Date.now()) { $('#rmsg').textContent = 'That time has already passed.'; return; }
   renderRem(await window.islet.remAdd({ text, at }));
   $('#rtext').value = ''; remChip = 0;
   $('#rmsg').textContent = 'Set for ' + clockOf(at);
@@ -582,5 +651,10 @@ $('#bell').onclick = () => (remindOpen() ? closeRemind() : openRemind());
 $('#rclose').onclick = closeRemind;
 $('#radd').onclick = addRemind;
 $('#rtext').addEventListener('keydown', e => { if (e.key === 'Enter') addRemind(); });
-$('#rtime').addEventListener('input', () => { remChip = 0; });
-$$('.rchips [data-m]').forEach(b => b.onclick = () => { remChip = Date.now() + (+b.dataset.m) * 60000; $('#rtime').value = hhmm(remChip); });
+$('#rtime').addEventListener('input', () => { remChip = 0; $('#rmsg').textContent = ''; });
+$('#cprev').onclick = () => { calM--; if (calM < 0) { calM = 11; calY--; } renderCal(); };
+$('#cnext').onclick = () => { calM++; if (calM > 11) { calM = 0; calY++; } renderCal(); };
+$$('.rchips [data-m]').forEach(b => b.onclick = () => {
+  remChip = Date.now() + (+b.dataset.m) * 60000; remDate = dayStart(remChip); calY = remDate.getFullYear(); calM = remDate.getMonth();
+  $('#rtime').value = hhmm(remChip); paintDate(); renderCal();
+});
