@@ -16,7 +16,7 @@ if (!app.requestSingleInstanceLock()) app.quit();
 // Instead it is always the open size, and while the notch is closed or showing a toast it ignores the mouse everywhere
 // except on the pill itself, so the empty area around the notch does not block the apps behind it.
 const SIZE = { open: { w: 480, h: 220 } };
-const PILL = { rest: { w: 200, h: 34 }, toast: { w: 270, h: 44 }, alert: { w: 300, h: 46 } };
+const PILL = { rest: { w: 200, h: 34 }, toast: { w: 270, h: 44 }, alert: { w: 400, h: 70 } };
 let win, tray, mode = 'rest';             // window size: rest | toast | open
 let reminders;
 let scale = 0.9;                     // size of the whole notch (1 = the original size); change it from the tray menu, Size
@@ -242,13 +242,18 @@ app.whenReady().then(() => {
 });
 
 /* ---------- window ---------- */
-ipcMain.handle('size', (_, m) => { mode = m === true ? 'open' : (m === 'toast' || m === 'alert') ? m : 'rest'; updateIgnore(); return true; });
+ipcMain.handle('size', (_, m) => { mode = m === true ? 'open' : (m === 'toast' || m === 'alert') ? m : 'rest'; updateIgnore();
+  if (win && !win.isDestroyed() && !onTop) {                // not pinned: a notification still comes to the front, then goes back
+    if (mode === 'toast' || mode === 'alert') { win.setAlwaysOnTop(true, 'screen-saver'); win.moveTop(); }
+    else win.setAlwaysOnTop(false);
+  }
+  return true;
+});
 ipcMain.handle('focusable', (_, on) => { win.setFocusable(!!on); if (on) win.focus(); return true; });
 ipcMain.on('hide', () => win.hide());
 ipcMain.handle('ontop-get', () => onTop);
 ipcMain.on('ontop-set', (_, on) => applyOnTop(on, false));
 ipcMain.on('dbg', (_, t) => { try { fs.appendFileSync(path.join(os.tmpdir(), 'islet-hover.log'), new Date().toISOString() + ' ' + String(t).slice(0, 300) + '\n'); } catch (e) {} });
-ipcMain.handle('uptime', () => os.uptime());
 
 /* ---------- clipboard ---------- */
 ipcMain.handle('clips', () => clips.list());

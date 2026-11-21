@@ -8,7 +8,7 @@ const ic = { pause: '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>', play: '<path d="M7
 let inside = false, winBig = false, closeT, shrinkT, holdUntil = 0;
 const picking = () => !$('#picker').hidden;
 const subOpen = () => !$('#sub').hidden;
-const remindOpen = () => !$('#remind').hidden;
+const remindOpen = () => remFocus;                       // the notch stays open while you are typing a reminder
 const hold = () => holdUntil > Date.now() || picking() || subOpen() || remindOpen();
 async function openNotch(tab) {
   clearTimeout(closeT); clearTimeout(shrinkT);
@@ -18,7 +18,7 @@ async function openNotch(tab) {
   if (tab) setTab(tab);
 }
 function closeNotch() {
-  n.dataset.s = 'rest';
+  n.dataset.s = 'rest'; releaseKeys();
   clearTimeout(shrinkT);
   shrinkT = setTimeout(() => { winBig = false; window.islet.size(false); }, 650);   // shrink after the closing animation
 }
@@ -67,7 +67,7 @@ function setTab(k) {
   n.dataset.t = k;
   fitNotch();
   if (k === 'apps') loadApps();
-  if (k === 'wid') widgets();
+  if (k === 'rem') enterRem(); else releaseKeys();
 }
 $$('.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 
@@ -75,7 +75,7 @@ $$('.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.datas
    Every other tab keeps the Media height, and scrolls when it has more than fits. */
 function fitNotch() {
   const tab = n.dataset.t;
-  if (tab !== 'ctrl' && tab !== 'files') { n.style.removeProperty('--oh'); return; }
+  if (tab !== 'ctrl' && tab !== 'files' && tab !== 'rem') { n.style.removeProperty('--oh'); return; }
   const pane = document.querySelector('.pane[data-pane="' + tab + '"]');
   if (!pane || pane.hidden) return;
   let bottom = 0;
@@ -84,7 +84,7 @@ function fitNotch() {
     if (cs.position === 'absolute' || cs.display === 'none') return;                     // overlays (Wi-Fi list) do not count
     bottom = Math.max(bottom, c.offsetTop + c.offsetHeight);
   });
-  const need = pane.offsetTop + bottom + (tab === 'ctrl' ? 18 : 10);                      // room under the content (Controls gets more, its tiles sit near the rounded corners)
+  const need = pane.offsetTop + bottom + (tab === 'ctrl' ? 18 : tab === 'rem' ? 14 : 10);                      // room under the content (Controls gets more, its tiles sit near the rounded corners)
   n.style.setProperty('--oh', Math.round(Math.min(Math.max(need, 150), tab === 'files' ? 214 : 230)) + 'px');
 }
 let fitRaf = 0;
@@ -95,15 +95,13 @@ new MutationObserver(() => { cancelAnimationFrame(fitRaf); fitRaf = requestAnima
 function clockTick() {
   const d = new Date();
   const t = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  $('#rt').textContent = t; $('#clk').textContent = t;
-  $('#dt').textContent = d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+  $('#rt').textContent = t;
 }
 clockTick(); setInterval(clockTick, 5000);
 if (navigator.getBattery) navigator.getBattery().then(b => {
   const show = () => {
     const pct = Math.round(b.level * 100);
-    $('#rb').textContent = pct + '%'; $('#bat').textContent = pct + '%';
-    $('#bst').textContent = b.charging ? 'Charging' : 'Battery';
+    $('#rb').textContent = pct + '%';
     $('#bfill').setAttribute('width', String(Math.max(1, 12 * b.level)));
     $('#bfill').style.color = b.charging ? '#30d158' : (pct <= 15 ? '#ff453a' : '');
   };
@@ -122,22 +120,13 @@ if (navigator.getBattery) navigator.getBattery().then(b => {
     if (b.charging && b.level >= 0.995 && !fullShown) { fullShown = true; pushNote({ kind: 'full', pct: 100 }); }
     if (b.level < 0.97) fullShown = false;
   });
-}); else { $('#rb').textContent = ''; $('#bat').textContent = 'n/a'; $('#bst').textContent = 'No battery'; }
+}); else { $('#rb').textContent = ''; }
 const kinds = { mic: 'Microphone', cam: 'Camera', loc: 'Location' };
 function applyPrivacy(p) {
   if (!p) return;
   Object.keys(kinds).forEach(k => $('#pd-' + k).classList.toggle('on', !!(p[k] && p[k].length)));
 }
 window.islet.getPrivacy().then(applyPrivacy); window.islet.onPrivacy(applyPrivacy);
-
-/* ================= widgets ================= */
-function widgets() {
-  window.islet.uptime().then(s => {
-    const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), d = Math.floor(h / 24);
-    $('#up').textContent = d ? d + 'd ' + (h % 24) + 'h' : h ? h + 'h ' + m + 'm' : m + 'm';
-  });
-}
-widgets(); setInterval(widgets, 30000);
 
 /* ================= media ================= */
 let media = null, artKey = '', iconFor = '';
@@ -588,12 +577,21 @@ window.islet.onNoteTest(k => {
   else pushNote({ kind: k, pct: k === 'full' ? 100 : 63 });
 });
 
-/* ================= reminders: the bell button and the calendar ================= */
-let remChip = 0, remItems = [], remDate = new Date(), calY = 0, calM = 0;
+/* ================= reminders tab: calendar, new reminder, upcoming list ================= */
+let remChip = 0, remItems = [], remDate = new Date(), calY = 0, calM = 0, remView = 'new', remFocus = false;
 const pad2 = v => String(v).padStart(2, '0');
 const hhmm = ms => { const d = new Date(ms); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); };
 const dayStart = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
 const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+// the notch normally never takes keyboard focus; it does while you type in the reminder fields
+async function grabKeys() { if (remFocus) return; remFocus = true; await window.islet.focusable(true); }
+function releaseKeys() { if (!remFocus) return; remFocus = false; window.islet.focusable(false); }
+['#rtext', '#rtime'].forEach(id => {
+  $(id).addEventListener('pointerdown', async e => { if (!remFocus) { e.preventDefault(); await grabKeys(); e.target.focus(); } });
+  $(id).addEventListener('focus', grabKeys);
+});
+window.addEventListener('blur', releaseKeys);
 
 function renderCal() {
   const today = dayStart(new Date()), first = new Date(calY, calM, 1);
@@ -616,30 +614,44 @@ function paintDate() {
   const d = remDate, t = sameDay(d, new Date()) ? 'Today, ' : '';
   $('#rdate').textContent = t + d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
 }
+function setRemView(v) {
+  remView = v;
+  $('#rform').hidden = v !== 'new'; $('#rlist').hidden = v !== 'list';
+  $('#rtn').classList.toggle('on', v === 'new'); $('#rtl').classList.toggle('on', v === 'list');
+  if (v !== 'new') releaseKeys();
+}
+function dayName(ms) {
+  const d = new Date(ms), t = new Date();
+  if (sameDay(d, t)) return 'Today';
+  if (sameDay(d, new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1))) return 'Tomorrow';
+  return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+}
 function renderRem(list) {
   remItems = list;
+  $('#rcnt').textContent = list.length; $('#rcnt').hidden = !list.length;
   const box = $('#rlist'); box.innerHTML = '';
-  if (!list.length) { box.innerHTML = '<p>No reminders yet.</p>'; renderCal(); return; }
+  if (!list.length) { box.innerHTML = '<p>No reminders yet.<br>Pick a day and add one.</p>'; renderCal(); return; }
   list.forEach(x => {
     const row = document.createElement('div'); row.className = 'rrow';
-    const tm = document.createElement('time'); tm.textContent = clockOf(x.at);
-    const tx = document.createElement('span'); tx.textContent = x.text; tx.title = x.text;
-    const del = document.createElement('button'); del.textContent = '\u00d7'; del.setAttribute('aria-label', 'Delete this reminder');
+    const tm = document.createElement('div'); tm.className = 'rt';
+    const b = document.createElement('b'); b.textContent = new Date(x.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const s = document.createElement('small'); s.textContent = dayName(x.at);
+    tm.append(b, s);
+    const tx = document.createElement('div'); tx.className = 'rx'; tx.textContent = x.text; tx.title = x.text;
+    const del = document.createElement('button'); del.textContent = '\u00d7'; del.setAttribute('aria-label', 'Delete this reminder'); del.title = 'Delete';
     del.onclick = async () => renderRem(await window.islet.remDel(x.id));
     row.append(tm, tx, del); box.appendChild(row);
   });
   renderCal();
 }
-async function openRemind() {
+async function enterRem() {
   const t = Date.now() + 10 * 60000;
-  remChip = 0; remDate = dayStart(t); calY = remDate.getFullYear(); calM = remDate.getMonth();
-  $('#rtime').value = hhmm(t); $('#rmsg').textContent = ''; $('#rtext').value = '';
-  paintDate(); renderCal();
-  $('#remind').hidden = false; $('#remind').scrollTop = 0; n.dataset.r = '1';
-  await window.islet.focusable(true); $('#rtext').focus();
+  if (!remChip && !$('#rtext').value) {                       // a fresh form starts on today, ten minutes ahead
+    remDate = dayStart(t); calY = remDate.getFullYear(); calM = remDate.getMonth(); $('#rtime').value = hhmm(t);
+  }
+  paintDate(); renderCal(); setRemView(remView);
   renderRem(await window.islet.remList());
 }
-async function closeRemind() { $('#remind').hidden = true; delete n.dataset.r; await window.islet.focusable(false); }
 async function addRemind() {
   const text = $('#rtext').value.trim();
   if (!text) { $('#rmsg').textContent = 'Type what to remind you about.'; $('#rtext').focus(); return; }
@@ -651,16 +663,17 @@ async function addRemind() {
   if (at <= Date.now()) { $('#rmsg').textContent = 'That time has already passed.'; return; }
   renderRem(await window.islet.remAdd({ text, at }));
   $('#rtext').value = ''; remChip = 0;
-  $('#rmsg').textContent = 'Set for ' + clockOf(at);
+  $('#rmsg').textContent = 'Set for ' + dayName(at) + ', ' + new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
-$('#bell').onclick = () => (remindOpen() ? closeRemind() : openRemind());
-$('#rclose').onclick = closeRemind;
 $('#radd').onclick = addRemind;
 $('#rtext').addEventListener('keydown', e => { if (e.key === 'Enter') addRemind(); });
 $('#rtime').addEventListener('input', () => { remChip = 0; $('#rmsg').textContent = ''; });
 $('#cprev').onclick = () => { calM--; if (calM < 0) { calM = 11; calY--; } renderCal(); };
 $('#cnext').onclick = () => { calM++; if (calM > 11) { calM = 0; calY++; } renderCal(); };
-$$('.rchips [data-m]').forEach(b => b.onclick = () => {
+$('#rtn').onclick = () => setRemView('new');
+$('#rtl').onclick = () => setRemView('list');
+$$('.rform [data-m]').forEach(b => b.onclick = () => {
   remChip = Date.now() + (+b.dataset.m) * 60000; remDate = dayStart(remChip); calY = remDate.getFullYear(); calM = remDate.getMonth();
   $('#rtime').value = hhmm(remChip); paintDate(); renderCal();
 });
+window.islet.remList().then(l => { remItems = l; $('#rcnt').textContent = l.length; $('#rcnt').hidden = !l.length; });

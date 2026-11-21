@@ -8,7 +8,6 @@ contextBridge.exposeInMainWorld('islet', {
   onOnTop: cb => ipcRenderer.on('ontop', (_, v) => cb(v)),
   log: t => ipcRenderer.send('dbg', String(t)),
   onCursor: cb => ipcRenderer.on('cursor', (_, v) => cb(v)),
-  uptime: () => ipcRenderer.invoke('uptime'),
   icon: p => ipcRenderer.invoke('icon', p),
 
   getClips: () => ipcRenderer.invoke('clips'),

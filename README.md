@@ -21,10 +21,16 @@ Time on the left, battery on the right. A small wave shows while media plays. Or
 ## Notifications and reminders
 - **Charger connected**: a small pill drops out of the notch for a few seconds (charger icon and battery percentage), then the notch goes back to what it was doing.
 - **Battery full**: when the battery reaches 100% while charging, the same pill says "Fully charged".
-- **Reminders**: click the bell button (next to the pin) while the notch is open. Type the message, pick a time (or +5 min / +15 min / +1 hour) and press Add. If the time already passed today the reminder is set for tomorrow. Reminders are saved and survive a restart.
+- **Reminders**: open the Reminders tab, pick a day on the calendar, type the message, set a time (or use +5m / +15m / +1h) and press Add. Reminders are saved and survive a restart.
 - When a reminder is due the notch grows into a full notification screen with the message and its scheduled time. It stays long enough to read (longer for longer messages; hovering it pauses the countdown). **Dismiss** closes it, **Snooze 5 min** brings it back later. If the notch was hidden it comes back for the reminder and hides again afterwards.
 - Several notifications wait in line, so they never overlap. A battery pill waits while the notch is open.
 - To see them without waiting: tray icon, right-click, Test notifications.
+
+## Pin
+The pin button (top right) keeps the notch above every other window. It is filled and orange when on; when off it is an outlined, tilted pin and the notch behaves like a normal window. Even when unpinned, a reminder or battery notification comes to the front for a moment and then goes back.
+
+## Reminders tab
+The Reminders tab has a month calendar on the left (past days are greyed out, a dot marks days that already have a reminder) and, on the right, two views: **New** (message, time, quick +5m / +15m / +1h buttons, Add) and **Upcoming** (your scheduled reminders, with a delete button on each). The notch only takes keyboard focus while you click into the message or time field.
 
 ## Size
 The whole notch is drawn a little smaller than the original design (Medium). Tray icon, right-click, Size lets you pick Small, Medium or Normal.

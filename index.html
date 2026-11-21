@@ -16,9 +16,8 @@ button{font:inherit;color:inherit}
 #notch[data-s="open"]{width:440px;height:var(--oh,172px);border-radius:0 0 28px 28px}
 #notch[data-s="rest"]{transition:width var(--dur) var(--out),height var(--dur) var(--out),border-radius var(--dur) var(--out)}
 #notch[data-s="toast"]{width:270px;height:44px;border-radius:0 0 22px 22px}
-#notch[data-s="alert"]{width:300px;height:46px;border-radius:0 0 23px 23px}
+#notch[data-s="alert"]{width:400px;height:70px;border-radius:0 0 30px 30px}
 .nclip{position:absolute;inset:0;overflow:hidden;border-radius:inherit;isolation:isolate;contain:paint;transform:translateZ(0)}
-#notch[data-s="open"][data-r="1"]{height:186px}
 .layer{position:absolute;inset:0;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .12s,visibility 0s linear .12s}
 #notch[data-s="rest"] .Lr,#notch[data-s="open"] .Lo,#notch[data-s="toast"] .Lt,#notch[data-s="alert"] .La{opacity:1;visibility:visible;pointer-events:auto}
 #notch[data-s="rest"] .Lr{transition:opacity .16s ease calc(var(--dur)*.62),visibility 0s calc(var(--dur)*.62)}
@@ -44,14 +43,19 @@ button{font:inherit;color:inherit}
 
 .Lo{padding:12px 18px 8px;display:flex;flex-direction:column;gap:10px}
 .row1{display:flex;align-items:center;justify-content:space-between;gap:6px}
-.tabs{display:flex;gap:2px}
-.tabs button{border:0;background:transparent;cursor:pointer;padding:5px 5px;border-radius:999px;font-size:12px;opacity:.6;white-space:nowrap;transition:background .15s,opacity .15s,transform .12s var(--out)}
+.tabs{display:flex;gap:4px}
+.tabs button{border:0;background:transparent;cursor:pointer;width:38px;height:28px;padding:0;display:grid;place-items:center;border-radius:999px;opacity:.55;transition:background .15s,opacity .15s,transform .12s var(--out)}
+.tabs button:hover{opacity:.95;background:rgba(127,127,127,.18)}
+.tabs button:active{transform:scale(.92)}
 .tabs button[aria-selected="true"]{background:rgba(127,127,127,.3);opacity:1}
 button:active{transform:scale(.96)}
 .wb button{width:25px;height:25px;border-radius:50%;border:0;background:rgba(127,127,127,.22);cursor:pointer;display:grid;place-items:center;transition:background .15s,transform .12s var(--out)}
 .wb{display:flex;gap:4px}
 .wb button:hover{background:rgba(127,127,127,.4)}
 .wb button[aria-pressed="true"]{background:var(--acc);color:#111}
+#pin svg{transition:transform .22s var(--out),opacity .2s}
+#pin[aria-pressed="true"] svg{fill:currentColor}
+#pin[aria-pressed="false"] svg{transform:rotate(40deg);opacity:.75}
 .pane{flex:1;min-height:0;position:relative}.pane[hidden]{display:none}
 .pane:not([hidden]){animation:pin .22s var(--out)}
 @keyframes pin{from{opacity:0;transform:translateY(6px)}}
@@ -121,10 +125,6 @@ button:active{transform:scale(.96)}
 .crow.pinned .cpin{opacity:1;color:var(--acc);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc) 55%,transparent)}
 
 /* widgets */
-.wid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-items:stretch}
-.wid>div{background:var(--card);border-radius:14px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;min-width:0}
-.wid strong{font-size:22px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
-.wid span{font-size:11.5px;opacity:.7;white-space:nowrap}
 
 /* files */
 .files{display:flex;flex-direction:column;gap:8px}
@@ -238,56 +238,73 @@ input[type=range]:disabled{cursor:default;opacity:.5}
 .ttx b{font-size:13px;font-weight:650;white-space:nowrap}
 .ttx small{font-size:10.5px;opacity:.65;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tpct{font-size:14px;font-weight:650;font-variant-numeric:tabular-nums;color:#30d158}
-.La{display:flex;align-items:center;gap:10px;padding:0 12px 0 14px;box-sizing:border-box}
-.abell{width:24px;height:24px;border-radius:50%;background:var(--acc);color:#111;display:grid;place-items:center;flex:none}
-.atx{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15}
-.amsg span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;font-weight:650}
-.atime{font-size:10.5px;opacity:.65;white-space:nowrap;font-variant-numeric:tabular-nums}
-.abt{flex:none;width:26px;height:26px;border:0;border-radius:50%;cursor:pointer;display:grid;place-items:center;padding:0;background:rgba(127,127,127,.25);color:inherit;transition:transform .15s var(--out),background-color .15s}
-.abt:hover{background:rgba(127,127,127,.42);transform:scale(1.08)}
-.abt:active{transform:scale(.94)}
+.La{display:flex;align-items:center;gap:12px;padding:0 20px 8px 18px;box-sizing:border-box}
+.abell{width:38px;height:38px;border-radius:13px;background:var(--acc);color:#111;display:grid;place-items:center;flex:none;box-shadow:0 0 0 4px color-mix(in srgb,var(--acc) 22%,transparent)}
+.atx{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.ahd{display:flex;align-items:baseline;gap:7px;font-size:10px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;opacity:.65;white-space:nowrap}
+.ahd .atime{color:var(--acc);letter-spacing:.02em;text-transform:none;font-size:11px;font-variant-numeric:tabular-nums}
+.amsg span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;font-size:14px;font-weight:650;line-height:1.2}
+.aact{display:flex;align-items:center;gap:6px;flex:none}
+.abt{height:28px;padding:0 13px;border:0;border-radius:999px;cursor:pointer;font-size:12px;font-weight:650;white-space:nowrap;background:rgba(127,127,127,.28);color:inherit;transition:transform .15s var(--out),background-color .15s,filter .15s}
+.abt:hover{background:rgba(127,127,127,.44);transform:translateY(-1px)}
+.abt:active{transform:scale(.95)}
 .abt.go{background:var(--acc);color:#111}
-.abt.go:hover{background:var(--acc);transform:scale(1.1)}
+.abt.go:hover{background:var(--acc);filter:brightness(1.08)}
 .pbtn{border:0;cursor:pointer;color:#111;font-size:12px;font-weight:600;background:var(--acc);border-radius:8px;padding:4px 12px}
-.abar{position:absolute;left:16px;right:16px;bottom:3px;height:2px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden}
+.abar{position:absolute;left:30px;right:30px;bottom:7px;height:2px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden}
 .abar b{display:block;height:100%;width:100%;background:var(--acc)}
-.remind{position:absolute;inset:0;z-index:6;background:#0b0b0d;padding:10px 18px 10px;display:flex;flex-direction:column;gap:8px;box-sizing:border-box;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
-.remind[hidden]{display:none}
-.rtop{display:flex;gap:14px;flex:none}
-.cal{width:178px;flex:none}
-.calnav{display:flex;align-items:center;justify-content:space-between;height:22px;font-size:12px}
-.cnb{border:0;background:rgba(127,127,127,.2);width:22px;height:20px;border-radius:7px;cursor:pointer;line-height:1;padding:0;font-size:14px}
-.cnb:hover{background:rgba(127,127,127,.35)}.cnb:disabled{opacity:.3;cursor:default}
+/* reminders tab */
+.rem{display:grid;grid-template-columns:176px minmax(0,1fr);gap:12px;align-content:start}
+.rcal{background:var(--card);border-radius:16px;padding:7px 8px 6px;min-width:0}
+.calnav{display:flex;align-items:center;justify-content:space-between;height:20px;font-size:12px}
+.calnav b{font-weight:650}
+.cnb{border:0;background:rgba(127,127,127,.2);width:22px;height:18px;border-radius:7px;cursor:pointer;line-height:1;padding:0;font-size:14px;transition:background-color .15s,transform .15s var(--out)}
+.cnb:hover{background:rgba(127,127,127,.4);transform:scale(1.08)}
+.cnb:disabled{opacity:.3;cursor:default;transform:none}
 .cdow,.cgrid{display:grid;grid-template-columns:repeat(7,1fr)}
-.cdow span{font-size:9.5px;opacity:.5;text-align:center;line-height:14px}
-.cgrid{grid-auto-rows:19px}
-.cd{border:0;background:transparent;font-size:11px;border-radius:7px;cursor:pointer;position:relative;padding:0;font-variant-numeric:tabular-nums}
-.cd:hover{background:rgba(127,127,127,.25)}
+.cdow span{font-size:9px;opacity:.5;text-align:center;line-height:13px}
+.cgrid{grid-auto-rows:17px;height:102px}
+.cd{border:0;background:transparent;font-size:10.5px;border-radius:6px;cursor:pointer;position:relative;padding:0;font-variant-numeric:tabular-nums;transition:background-color .12s,transform .12s var(--out)}
+.cd:hover{background:rgba(127,127,127,.28);transform:scale(1.08)}
 .cd.today{box-shadow:inset 0 0 0 1px var(--acc)}
 .cd.sel{background:var(--acc);color:#111;font-weight:700}
 .cd:disabled{opacity:.22;cursor:default;pointer-events:none}
 .cd.has::after{content:"";position:absolute;bottom:1px;left:50%;margin-left:-1.5px;width:3px;height:3px;border-radius:50%;background:var(--acc)}
 .cd.sel.has::after{background:#111}
-.rside{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
-.rhead{display:flex;align-items:center;justify-content:space-between;font-size:13px;height:22px}
-.rside input{background:var(--card);border:0;border-radius:8px;color:inherit;padding:6px 10px;font:inherit;font-size:12.5px;user-select:text;outline:none;min-width:0;box-sizing:border-box}
-.rside input:focus{box-shadow:0 0 0 1.5px var(--acc)}
-#rtext{width:100%}
-.rwhen{display:flex;gap:8px;align-items:center}
-#rdate{flex:1;font-size:12.5px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#rtime{width:98px}
-.rchips{display:flex;gap:6px}
-.rgo{display:flex;gap:8px;align-items:center}
-#rmsg{font-size:11px;opacity:.7;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rsub{font-size:11px;opacity:.55;flex:none;margin-top:2px}
-.rlist{flex:none;display:flex;flex-direction:column;gap:2px}
-.rrow{display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 6px;border-radius:8px;flex:none}
-.rrow:hover{background:rgba(127,127,127,.18)}
-.rrow time{width:104px;flex:none;opacity:.7;font-variant-numeric:tabular-nums}
-.rrow span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rrow button{border:0;background:none;cursor:pointer;opacity:.6;font-size:14px;padding:0 4px}
-.rrow button:hover{opacity:1}
-.rlist p{margin:2px 6px;font-size:12px;opacity:.55}
+.rmain{display:flex;flex-direction:column;gap:7px;min-width:0}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:3px;background:var(--card);border-radius:11px;padding:3px;flex:none}
+.seg button{border:0;background:transparent;border-radius:8px;padding:4px 6px;font-size:11.5px;font-weight:600;cursor:pointer;opacity:.7;transition:background-color .15s,opacity .15s;white-space:nowrap}
+.seg button:hover{opacity:1}
+.seg button.on{background:rgba(127,127,127,.34);opacity:1}
+.seg i{font-style:normal;background:var(--acc);color:#111;border-radius:999px;padding:0 6px;margin-left:4px;font-size:10px}
+.rform{display:flex;flex-direction:column;gap:7px}
+.rform[hidden],.rlist[hidden]{display:none}
+.rinput{display:flex;align-items:center;gap:8px;background:var(--card);border-radius:12px;padding:0 10px;height:30px;color:rgba(255,255,255,.55);transition:box-shadow .15s}
+.rinput:focus-within{box-shadow:0 0 0 1.5px var(--acc);color:var(--acc)}
+.rinput input{flex:1;min-width:0;background:transparent;border:0;outline:none;color:#f4f4f6;font:inherit;font-size:12.5px;user-select:text}
+.rwhen{display:flex;gap:7px}
+#rdate{flex:1;min-width:0;display:flex;align-items:center;background:var(--card);border-radius:12px;padding:0 10px;height:28px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#rtime{width:92px;height:28px;box-sizing:border-box;background:var(--card);border:0;border-radius:12px;color:inherit;font:inherit;font-size:12.5px;padding:0 8px;outline:none;user-select:text}
+#rtime:focus{box-shadow:0 0 0 1.5px var(--acc)}
+.rchips{display:flex;gap:5px;align-items:center}
+.chip{border:0;background:var(--card);border-radius:999px;padding:0 9px;height:24px;font-size:11px;font-weight:600;cursor:pointer;transition:background-color .15s,transform .15s var(--out)}
+.chip:hover{background:rgba(127,127,127,.34);transform:translateY(-1px)}
+.chip:active{transform:scale(.95)}
+.radd{margin-left:auto;border:0;background:var(--acc);color:#111;border-radius:999px;height:26px;padding:0 14px;font-size:12px;font-weight:700;cursor:pointer;transition:transform .15s var(--out),filter .15s}
+.radd:hover{transform:translateY(-1px);filter:brightness(1.08)}
+.radd:active{transform:scale(.95)}
+#rmsg{font-size:10.5px;opacity:.7;min-height:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rlist{display:flex;flex-direction:column;gap:5px;overflow-y:auto;scrollbar-width:thin;height:112px;padding-right:2px}
+.rrow{display:flex;align-items:center;gap:9px;flex:none;background:var(--card);border-radius:11px;padding:6px 8px 6px 11px;box-shadow:inset 3px 0 0 var(--acc);transition:transform .15s var(--out),background-color .15s}
+.rrow:hover{background:rgba(127,127,127,.3);transform:translateX(1px)}
+.rrow .rt{display:flex;flex-direction:column;line-height:1.15;width:62px;flex:none}
+.rrow .rt b{font-size:12px;font-weight:650;font-variant-numeric:tabular-nums}
+.rrow .rt small{font-size:9.5px;opacity:.6}
+.rrow .rx{flex:1;min-width:0;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rrow button{border:0;background:none;cursor:pointer;opacity:.4;font-size:15px;padding:0 4px;transition:opacity .15s,color .15s,transform .15s var(--out)}
+.rrow:hover button{opacity:.8}
+.rrow button:hover{opacity:1;color:#ff6b5e;transform:scale(1.2)}
+.rlist p{margin:auto;font-size:12px;opacity:.55;text-align:center}
 @media (prefers-reduced-motion:reduce){:root{--dur:.01s}.wave i{animation:none}.pane:not([hidden]){animation:none}}
 </style>
 </head>
@@ -307,14 +324,14 @@ input[type=range]:disabled{cursor:default;opacity:.5}
   <div class="layer Lo">
     <div class="row1">
       <div class="tabs" role="tablist">
-        <button role="tab" data-tab="music" aria-selected="true">Media</button>
-        <button role="tab" data-tab="clip" aria-selected="false">Clipboard</button>
-        <button role="tab" data-tab="wid" aria-selected="false">Widgets</button>
-        <button role="tab" data-tab="files" aria-selected="false">Files</button>
-        <button role="tab" data-tab="ctrl" aria-selected="false">Controls</button>
-        <button role="tab" data-tab="apps" aria-selected="false">Apps</button>
+        <button role="tab" data-tab="music" aria-selected="true" aria-label="Media" title="Media"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></button>
+        <button role="tab" data-tab="clip" aria-selected="false" aria-label="Clipboard" title="Clipboard"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></button>
+        <button role="tab" data-tab="rem" aria-selected="false" aria-label="Reminders" title="Reminders"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+        <button role="tab" data-tab="files" aria-selected="false" aria-label="Files" title="Files"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></button>
+        <button role="tab" data-tab="ctrl" aria-selected="false" aria-label="Controls" title="Controls"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h9M19 6h1M4 12h3M13 12h7M4 18h11M21 18h-1"/><circle cx="16" cy="6" r="2.2"/><circle cx="10" cy="12" r="2.2"/><circle cx="17.5" cy="18" r="2.2"/></svg></button>
+        <button role="tab" data-tab="apps" aria-selected="false" aria-label="Apps" title="Apps"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg></button>
       </div>
-      <div class="wb"><button id="pin" aria-label="Always on top" aria-pressed="true" title="Always on top: on (click to turn off)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3z"/></svg></button><button id="bell" aria-label="Reminders" title="Reminders"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></button><button id="hide" aria-label="Hide the notch" title="Hide the notch (Ctrl+Alt+N or the tray icon brings it back)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+      <div class="wb"><button id="pin" aria-label="Always on top" aria-pressed="true" title="Always on top: on (click to turn off)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3z"/></svg></button><button id="hide" aria-label="Hide the notch" title="Hide the notch (Ctrl+Alt+N or the tray icon brings it back)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
     </div>
 
     <!-- Media -->
@@ -344,10 +361,23 @@ input[type=range]:disabled{cursor:default;opacity:.5}
     </div>
 
     <!-- Widgets -->
-    <div class="pane wid" data-pane="wid" hidden>
-      <div><strong id="clk">12:00</strong><span id="dt">Today</span></div>
-      <div><strong id="bat">--</strong><span id="bst">Battery</span></div>
-      <div><strong id="up">--</strong><span>PC uptime</span></div>
+    <!-- Reminders -->
+    <div class="pane rem" data-pane="rem" hidden>
+      <div class="rcal">
+        <div class="calnav"><button class="cnb" id="cprev" aria-label="Previous month">&lsaquo;</button><b id="cmonth">--</b><button class="cnb" id="cnext" aria-label="Next month">&rsaquo;</button></div>
+        <div class="cdow"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+        <div class="cgrid" id="cgrid"></div>
+      </div>
+      <div class="rmain">
+        <div class="seg"><button id="rtn" class="on">New</button><button id="rtl">Upcoming<i id="rcnt">0</i></button></div>
+        <div class="rform" id="rform">
+          <label class="rinput"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg><input id="rtext" type="text" maxlength="140" placeholder="Remind me to..." autocomplete="off" spellcheck="false"></label>
+          <div class="rwhen"><span id="rdate">--</span><input id="rtime" type="time"></div>
+          <div class="rchips"><button class="chip" data-m="5">+5m</button><button class="chip" data-m="15">+15m</button><button class="chip" data-m="60">+1h</button><button class="radd" id="radd">Add</button></div>
+          <div id="rmsg"></div>
+        </div>
+        <div class="rlist" id="rlist" hidden></div>
+      </div>
     </div>
 
     <!-- Files -->
@@ -407,10 +437,9 @@ input[type=range]:disabled{cursor:default;opacity:.5}
   </div>
   <div class="layer Lt"><span class="tic" id="tic"></span><div class="ttx"><b id="tt">Charging</b><small id="tsub"></small></div><span class="tpct" id="tpct">--</span></div>
   <div class="layer La">
-    <span class="abell"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>
-    <div class="atx"><div class="amsg" id="amsg"><span></span></div><span class="atime" id="atime">--</span></div>
-    <button class="abt" id="asnooze" title="Snooze 5 min" aria-label="Snooze 5 minutes"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M5 4 2 7M19 4l3 3"/></svg></button>
-    <button class="abt go" id="adone" title="Dismiss" aria-label="Dismiss"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+    <span class="abell"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>
+    <div class="atx"><div class="ahd"><span>Reminder</span><span class="atime" id="atime">--</span></div><div class="amsg" id="amsg"><span></span></div></div>
+    <div class="aact"><button class="abt" id="asnooze" title="Remind me again in 5 minutes">Snooze</button><button class="abt go" id="adone">Done</button></div>
     <div class="abar"><b id="abarf"></b></div>
   </div>
  </div>
